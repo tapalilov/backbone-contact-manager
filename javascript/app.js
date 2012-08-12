@@ -4,7 +4,7 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   $(function() {
-    var Contact, ContactView, Directory, DirectoryView, contacts;
+    var Contact, ContactView, ContactsRouter, Directory, DirectoryView, contacts, contactsRouter, directory;
     contacts = [
       {
         name: "Contact 1",
@@ -118,13 +118,21 @@
 
       DirectoryView.prototype.el = $('#contacts');
 
+      DirectoryView.prototype.events = {
+        "change #filter select": "setFilter"
+      };
+
       DirectoryView.prototype.initialize = function() {
         this.collection = new Directory(contacts);
-        return this.render();
+        this.render();
+        this.$el.find("#filter").append(this.createSelect());
+        this.on("change:filterType", this.filterByType, this);
+        return this.collection.on('reset', this.render, this);
       };
 
       DirectoryView.prototype.render = function() {
         var that;
+        this.$el.find("article").remove();
         that = this;
         _.each(this.collection.models, function(item) {
           return that.renderContact(item);
@@ -140,10 +148,78 @@
         return this.$el.append(contactView.render().el);
       };
 
+      DirectoryView.prototype.getType = function() {
+        return _.uniq(this.collection.pluck("type"), false, function(type) {
+          return type.toLowerCase();
+        });
+      };
+
+      DirectoryView.prototype.createSelect = function() {
+        var filter, select;
+        filter = this.$el.find("#filter");
+        select = $('<select/>', {
+          html: "<option>All</option>"
+        });
+        _.each(this.getType(), function(item) {
+          var option;
+          return option = $("<option/>", {
+            value: item.toLowerCase(),
+            text: item.toLowerCase()
+          }).appendTo(select);
+        });
+        return select;
+      };
+
+      DirectoryView.prototype.setFilter = function(event) {
+        this.filterType = event.currentTarget.value;
+        return this.trigger('change:filterType');
+      };
+
+      DirectoryView.prototype.filterByType = function() {
+        var filterType, filtered;
+        if (this.filterType === 'All') {
+          this.collection.reset(contacts);
+          return contactsRouter.navigate('filter/all');
+        } else {
+          this.collection.reset(contacts, {
+            silent: true
+          });
+          filterType = this.filterType;
+          filtered = _.filter(this.collection.models, function(item) {
+            return item.get('type').toLowerCase() === filterType;
+          });
+          this.collection.reset(filtered);
+          return contactsRouter.navigate("filter/" + filterType);
+        }
+      };
+
       return DirectoryView;
 
     })(Backbone.View);
-    return window.directoryView = new DirectoryView();
+    ContactsRouter = (function(_super) {
+
+      __extends(ContactsRouter, _super);
+
+      function ContactsRouter() {
+        return ContactsRouter.__super__.constructor.apply(this, arguments);
+      }
+
+      ContactsRouter.prototype.routes = {
+        "filter/:type": "urlFilter"
+      };
+
+      ContactsRouter.prototype.urlFilter = function(type) {
+        console.log(type);
+        directory.filterType = type;
+        return directory.trigger("change:filterType");
+      };
+
+      return ContactsRouter;
+
+    })(Backbone.Router);
+    directory = new DirectoryView();
+    contactsRouter = new ContactsRouter();
+    return Backbone.history.start();
   });
 
 }).call(this);
