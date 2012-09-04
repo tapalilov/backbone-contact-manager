@@ -14,6 +14,18 @@
 <div id="contacts">
 <header>
 	<div id='filter'><label>Show me</label></div>
+	<a id="showForm" href="#">Add new contact</a>
+
+	<form id='addContact' action='#'>
+		<label for='photo'>Photo:</label><input id='photo' tyoe='file'/>
+		<label for='type'>Type:</label><input id='type' tyoe='file'/>
+		<label for='name'>Name:</label><input id='name' tyoe='file'/>
+		<label for='address'>Address:</label><input id='address' tyoe='file'/>
+		<label for='tel'>Tel:</label><input id='tel' tyoe='file'/>
+		<label for='email'>Email:</label><input id='email' tyoe='file'/>
+		<button id='add'>Add</button>
+	</form>
+
 </header>
 </div>
 	<script id="contactTemplate" type="text/template">
@@ -24,6 +36,7 @@
         <dt>Tel:</dt> <dd> <%= tel %></dd>
         <dt>Email:</dt><dd><a href="mailto:<%= email %>"><%= email %></a></dd>
     </dl>
+    <button class="delete">Delete</button>
 </script>
 </body>
 </html>

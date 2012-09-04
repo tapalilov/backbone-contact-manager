@@ -53,6 +53,11 @@ $ ->
 	class Contact extends Backbone.Model
 		defaults:
 			photo: './img/placeholder.png'
+			name: "",
+			address: "",
+			tel: "",
+			email: "",
+			type: ""
 
 	
 	class Directory extends Backbone.Collection
@@ -63,6 +68,16 @@ $ ->
 		tagName: 'article'
 		className: "contact-container"
 		template: $("#contactTemplate").html()
+
+		events: ->
+			'click button.delete': 'deleteContact'
+
+		deleteContact: ->
+			removedType = @model.get('type').toLowerCase()
+			@model.destroy()
+			@.remove()
+			if _.indexOf(directory.getType(), removedType) == -1
+				directory.$el.find('#filter select').children("[value='" + removedType + "']").remove()
 
 		render: ->
 			tmpl = _.template(@template)
@@ -75,7 +90,10 @@ $ ->
 
 		events: {
 			"change #filter select": "setFilter"
+			'click #add':'addContact'
+			'click #showForm' : 'showForm' 
 		}
+
 
 		initialize: ->
 			@collection = new Directory(contacts)
@@ -83,7 +101,9 @@ $ ->
 			@$el.find("#filter").append @createSelect()
 			@on "change:filterType", @filterByType, this
 			@collection.on 'reset', @render, @
-		
+			@collection.on 'add', @renderContact, @
+			@collection.on 'remove', @removeContact, @
+
 		render: ->
 			this.$el.find("article").remove();
 
@@ -132,6 +152,36 @@ $ ->
 				@collection.reset filtered
 
 				contactsRouter.navigate "filter/#{filterType}"
+
+		addContact: (e)->
+			e.preventDefault()
+			formData = {}
+			$('#addContact').children('input').each (i, el)->
+				formData[el.id] = $(el).val()
+			contacts.push(formData)
+
+			if formData.photo == ''
+				formData.photo = './img/placeholder.png'
+			
+			if _.indexOf(@getType(), formData.type) == -1
+				@collection.add(new Contact(formData))
+				@$el.find('#filter').find('select').remove().end().append @createSelect()
+			else
+				@collection.add(new Contact(formData))
+
+		removeContact:(removedModel) ->
+			removed = removedModel.attributes
+
+			if removed.photo == "./img/placeholder.png"
+				delete removed.photo
+
+			_.each contacts, (contact)->
+				if _.isEqual contact, removed
+					contacts.splice _.indexOf(contacts, contact), 1 
+
+		showForm: (e)->
+			e.preventDefault()
+			@$el.find('#addContact').slideToggle()
 
 	class ContactsRouter extends Backbone.Router
 		routes:

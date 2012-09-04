@@ -65,7 +65,12 @@
       }
 
       Contact.prototype.defaults = {
-        photo: './img/placeholder.png'
+        photo: './img/placeholder.png',
+        name: "",
+        address: "",
+        tel: "",
+        email: "",
+        type: ""
       };
 
       return Contact;
@@ -98,6 +103,22 @@
 
       ContactView.prototype.template = $("#contactTemplate").html();
 
+      ContactView.prototype.events = function() {
+        return {
+          'click button.delete': 'deleteContact'
+        };
+      };
+
+      ContactView.prototype.deleteContact = function() {
+        var removedType;
+        removedType = this.model.get('type').toLowerCase();
+        this.model.destroy();
+        this.remove();
+        if (_.indexOf(directory.getType(), removedType) === -1) {
+          return directory.$el.find('#filter select').children("[value='" + removedType + "']").remove();
+        }
+      };
+
       ContactView.prototype.render = function() {
         var tmpl;
         tmpl = _.template(this.template);
@@ -119,7 +140,9 @@
       DirectoryView.prototype.el = $('#contacts');
 
       DirectoryView.prototype.events = {
-        "change #filter select": "setFilter"
+        "change #filter select": "setFilter",
+        'click #add': 'addContact',
+        'click #showForm': 'showForm'
       };
 
       DirectoryView.prototype.initialize = function() {
@@ -127,7 +150,9 @@
         this.render();
         this.$el.find("#filter").append(this.createSelect());
         this.on("change:filterType", this.filterByType, this);
-        return this.collection.on('reset', this.render, this);
+        this.collection.on('reset', this.render, this);
+        this.collection.on('add', this.renderContact, this);
+        return this.collection.on('remove', this.removeContact, this);
       };
 
       DirectoryView.prototype.render = function() {
@@ -191,6 +216,43 @@
           this.collection.reset(filtered);
           return contactsRouter.navigate("filter/" + filterType);
         }
+      };
+
+      DirectoryView.prototype.addContact = function(e) {
+        var formData;
+        e.preventDefault();
+        formData = {};
+        $('#addContact').children('input').each(function(i, el) {
+          return formData[el.id] = $(el).val();
+        });
+        contacts.push(formData);
+        if (formData.photo === '') {
+          formData.photo = './img/placeholder.png';
+        }
+        if (_.indexOf(this.getType(), formData.type) === -1) {
+          this.collection.add(new Contact(formData));
+          return this.$el.find('#filter').find('select').remove().end().append(this.createSelect());
+        } else {
+          return this.collection.add(new Contact(formData));
+        }
+      };
+
+      DirectoryView.prototype.removeContact = function(removedModel) {
+        var removed;
+        removed = removedModel.attributes;
+        if (removed.photo === "./img/placeholder.png") {
+          delete removed.photo;
+        }
+        return _.each(contacts, function(contact) {
+          if (_.isEqual(contact, removed)) {
+            return contacts.splice(_.indexOf(contacts, contact), 1);
+          }
+        });
+      };
+
+      DirectoryView.prototype.showForm = function(e) {
+        e.preventDefault();
+        return this.$el.find('#addContact').slideToggle();
       };
 
       return DirectoryView;
