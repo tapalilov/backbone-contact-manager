@@ -69,8 +69,66 @@ $ ->
 		className: "contact-container"
 		template: $("#contactTemplate").html()
 
+		render: ->
+			tmpl = _.template(@template)
+
+			@$el.html tmpl(@model.toJSON())
+			this
+
+		editTemplate: _.template $('#contactEditTemplate').html()
+
 		events: ->
 			'click button.delete': 'deleteContact'
+			'click button.edit': 'editContact'
+			'change select.type': 'addType'
+			'click button.save': 'saveEdit'
+			'click button.cancel': 'cancelEdit'
+
+		cancelEdit: ->
+			@render()
+
+		saveEdit: (event)->
+			event.preventDefault()
+			formData = {}
+			prev = @model.previousAttributes()
+			$(event.target).closest('form').find(':input').not('button').each ->
+				el = $(@)
+				formData[el.attr('class')] = el.val()
+
+			if formData.photo == ''
+				delete formData.photo
+
+			@model.set(formData)
+			@render()
+
+			if prev.photo == '/img/placeholder.png'	
+        delete prev.photo
+
+			_.each contacts, (contact)->
+				if _.isEqual contact, prev
+					contacts.splice _.indexOf(contacts, contact), 1, formData
+
+		editContact: ->
+			@$el.html @editTemplate(@model.toJSON())
+
+			newOpt = $('<option/>',
+					html: '<em> Add new .. </em>'
+					value: 'Add type')
+
+			@select = directory.createSelect().addClass('type')
+																				.val(@$el.find('#type').val())
+																				.append(newOpt)
+																				.insertAfter(@$el.find('.name'))
+
+			@$el.find("input[type='hidden']").remove()	
+			
+
+		addType: ->
+			if @select.val() == 'Add type'
+				@select.remove()
+				$('<input />',
+					'class': 'type'
+					).insertAfter(@$el.find('.name')).focus()													
 
 		deleteContact: ->
 			removedType = @model.get('type').toLowerCase()
@@ -79,11 +137,6 @@ $ ->
 			if _.indexOf(directory.getType(), removedType) == -1
 				directory.$el.find('#filter select').children("[value='" + removedType + "']").remove()
 
-		render: ->
-			tmpl = _.template(@template)
-
-			@$el.html tmpl(@model.toJSON())
-			this
 		
 	class DirectoryView extends Backbone.View
 		el: $('#contacts')

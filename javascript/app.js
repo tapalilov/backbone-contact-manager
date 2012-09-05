@@ -103,10 +103,72 @@
 
       ContactView.prototype.template = $("#contactTemplate").html();
 
+      ContactView.prototype.render = function() {
+        var tmpl;
+        tmpl = _.template(this.template);
+        this.$el.html(tmpl(this.model.toJSON()));
+        return this;
+      };
+
+      ContactView.prototype.editTemplate = _.template($('#contactEditTemplate').html());
+
       ContactView.prototype.events = function() {
         return {
-          'click button.delete': 'deleteContact'
+          'click button.delete': 'deleteContact',
+          'click button.edit': 'editContact',
+          'change select.type': 'addType',
+          'click button.save': 'saveEdit',
+          'click button.cancel': 'cancelEdit'
         };
+      };
+
+      ContactView.prototype.cancelEdit = function() {
+        return this.render();
+      };
+
+      ContactView.prototype.saveEdit = function(event) {
+        var formData, prev;
+        event.preventDefault();
+        formData = {};
+        prev = this.model.previousAttributes();
+        $(event.target).closest('form').find(':input').not('button').each(function() {
+          var el;
+          el = $(this);
+          return formData[el.attr('class')] = el.val();
+        });
+        if (formData.photo === '') {
+          delete formData.photo;
+        }
+        this.model.set(formData);
+        this.render();
+        if (prev.photo === '/img/placeholder.png') {
+          delete prev.photo;
+        }
+        return _.each(contacts, function(contact) {
+          if (_.isEqual(contact, prev)) {
+            return contacts.splice(_.indexOf(contacts, contact), 1, formData);
+          }
+        });
+      };
+
+      ContactView.prototype.editContact = function() {
+        var newOpt;
+        this.$el.html(this.editTemplate(this.model.toJSON()));
+        newOpt = $('<option/>', {
+          html: '<em> Add new .. </em>',
+          value: 'Add type'
+        });
+        this.select = directory.createSelect().addClass('type').val(this.$el.find('#type').val()).append(newOpt).insertAfter(this.$el.find('.name'));
+        return this.$el.find("input[type='hidden']").remove();
+      };
+
+      ContactView.prototype.addType = function() {
+        if (this.select.val() === 'Add type') {
+          this.select.remove();
+          return $('<input />', {
+            'class': 'type'
+          }).insertAfter(this.$el.find('.name')).focus();
+        }
       };
 
       ContactView.prototype.deleteContact = function() {
@@ -117,13 +179,6 @@
         if (_.indexOf(directory.getType(), removedType) === -1) {
           return directory.$el.find('#filter select').children("[value='" + removedType + "']").remove();
         }
-      };
-
-      ContactView.prototype.render = function() {
-        var tmpl;
-        tmpl = _.template(this.template);
-        this.$el.html(tmpl(this.model.toJSON()));
-        return this;
       };
 
       return ContactView;
